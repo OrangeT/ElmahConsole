@@ -13,6 +13,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using System.Xml.Serialization;
 using System.IO;
+using elmahconsole.lib.Models;
+using elmahconsole.lib.Sql;
 
 namespace elmahconsole.Controllers
 {
@@ -27,115 +29,19 @@ namespace elmahconsole.Controllers
         }
 
         [HttpGet("[action]")]
-        public IEnumerable<ElmahError> Errors()
+        public ElmahErrorList Errors(int page = 0)
         {
-            var list = new List<ElmahError>();
+            ElmahErrorList dto = new ElmahErrorList();
 
-            using (var connection = new SqlConnection(_connectionString))
-            using (var command =
-                new SqlCommand(
-                    "SELECT TOP 10 errorId, application, host, type, source, message, [user], statusCode, timeUtc, allXml FROM ELMAH_Error ORDER BY TimeUtc DESC")
-            )
+            using (var elmahSql = new ElmahSql(_connectionString))
             {
-                command.Connection = connection;
-                connection.Open();
-
-                //Set up serializer
-                var serializer = new XmlSerializer(typeof(ElmahErrorXml));
-
-                var reader = command.ExecuteReader();
-                try
-                {
-                    while (reader.Read())
-                    {
-                        list.Add(new ElmahError
-                        {
-                            ErrorId = reader.GetGuid(reader.GetOrdinal("errorId")),
-                            Application = reader.GetString(reader.GetOrdinal("application")),
-                            Host = reader.GetString(reader.GetOrdinal("host")),
-                            Type = reader.GetString(reader.GetOrdinal("type")),
-                            Source = reader.GetString(reader.GetOrdinal("source")),
-                            Message = reader.GetString(reader.GetOrdinal("message")),
-                            User = reader.GetString(reader.GetOrdinal("user")),
-                            StatusCode = reader.GetInt32(reader.GetOrdinal("statusCode")),
-                            TimeUtc = reader.GetDateTime(reader.GetOrdinal("timeUtc")),
-                            AllXml = reader.GetString(reader.GetOrdinal("allXml")),
-                            DecodedXml = (ElmahErrorXml)serializer.Deserialize(
-                                new StringReader(reader.GetString(reader.GetOrdinal("allXml")))) // Deserialize XML
-                        });
-                    }
-                }
-                finally
-                {
-                    reader.Close();
-                }
+                    dto.Total = elmahSql.TotalErrors();
+                    dto.Errors = elmahSql.ErrorList(page);
+                    dto.Pages = (int)Math.Ceiling((decimal)dto.Total / ElmahSql.PAGE_SIZE);
+                    dto.CurrentPage = page;
             }
 
-            return list;
+            return dto;
         }
-
     }
-
-    public class ElmahError
-    {
-        public Guid ErrorId { get; set; }
-
-        public string Application { get; set; }
-
-        public string Host { get; set; }
-
-        public string Type { get; set; }
-
-        public string Source { get; set; }
-
-        public string Message { get; set; }
-
-        public string User { get; set; }
-
-        public int StatusCode { get; set; }
-
-        public DateTime TimeUtc { get; set; }
-
-        public string AllXml { get; set; }
-        public ElmahErrorXml DecodedXml { get; set; }
-    }
-
-    [Serializable()]
-    [XmlRoot("error")]
-    public class ElmahErrorXml
-    {
-        [XmlAttribute("application")]
-        public string Application { get; set; }
-
-        [XmlAttribute("host")]
-        public string Host { get; set; }
-
-        [XmlAttribute("type")]
-        public string Type { get; set; }
-
-        [XmlAttribute("message")]
-        public string Message { get; set; }
-
-        [XmlAttribute("source")]
-        public string Source { get; set; }
-
-        [XmlAttribute("detail")]
-        public string Detail { get; set; }
-
-        [XmlAttribute("user")]
-        public string User { get; set; }
-
-        [XmlAttribute("time")]
-        public DateTime Time { get; set; }
-
-        [XmlAttribute("statusCode")]
-        public int StatusCode { get; set; }
-
-        // public Dictionary<string, string> ServerVariables { get; set; }
-
-        // public Dictionary<string, string> QueryString { get; set; }
-
-        // public Dictionary<string, string> Cookies { get; set; }
-    }
-
 }

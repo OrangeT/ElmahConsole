@@ -2,7 +2,7 @@
 
 <p>Latest 10 Errors from ELMAH</p>
 
-<p *ngIf="!errors"><em>Loading...</em></p>
+<p *ngIf="!errorList"><em>Loading...</em></p>
 
 <div *ngIf="selectedError">
 
@@ -38,25 +38,34 @@
 
 </div>
 
-<table class='table' *ngIf="errors && !selectedError">
-    <thead>
-        <tr>
-            <th>Error Id</th>
-            <th>Application</th>
-            <th>Source</th>
-            <th>Type</th>
-            <th>Message</th>
-            <th>Time UTC</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr *ngFor="let error of errors">
-            <td (click)="onSelect(error)">{{ error.errorId }}</td>
-            <td>{{ error.application }}</td>
-            <td>{{ error.source }}</td>
-            <td>{{ error.type }}</td>
-            <td>{{ error.message }}</td>
-            <td>{{ error.timeUtc }}</td>
-        </tr>
-    </tbody>
-</table>
+<div *ngIf="errorList && !selectedError">
+    <h2>Total Errors: {{ total }}</h2>
+
+    <ngb-pagination [collectionSize]="errorList.total" [page]="errorList.currentPage" maxSize="10"
+        ellipses="true" boundaryLinks="true" rotate="true"
+        (pageChange)="changePage($event)" aria-label="Default pagination"></ngb-pagination>
+
+    <table class='table'>
+        <thead>
+            <tr>
+                <th>Error Id</th>
+                <th>Application</th>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Message</th>
+                <th>Time UTC</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let error of errorList.errors">
+                <td (click)="onSelect(error)">{{ error.errorId }}</td>
+                <td>{{ error.application }}</td>
+                <td>{{ error.source }}</td>
+                <td>{{ error.type }}</td>
+                <td>{{ error.message }}</td>
+                <td>{{ error.timeUtc }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
